@@ -1,43 +1,15 @@
-# Macro Quant Terminal v15
-
-fredapi 기반 안정적 데이터 로드 버전입니다.
-
-## 핵심 변경 (504 오류 해결)
-
-- FRED CSV 직접 호출 방식 제거 → **fredapi 라이브러리** 사용
-- fredapi 없거나 키 없을 때만 CSV fallback (자동)
-- 타임아웃 504/404 오류 대부분 해결
-
-## 주요 기능
-
-- fredapi 기반 FRED 데이터 로드
-- Beginner/Advanced 보기 모드
-- 섹터 PER 밸류에이션 (스코어에 반영)
-- 내 포트폴리오 직접 입력 → 추천과 비교 + 리밸런싱 금액
-- 거래비용 반영 백테스트 (비용없음 vs 설정 bps 비교)
-- 데이터 기준일 + 발표주기별 지연 판정
-- LLM 세션당 5회 제한
-- 자동 새로고침 (15/30/60분)
-
-## Streamlit Cloud Secrets 설정 (필수)
-
-Settings → Secrets에 입력:
-
-```toml
-FRED_API_KEY = "발급받은키"
-GEMINI_API_KEY = "발급받은키"
-ANTHROPIC_API_KEY = ""
-```
-
-FRED 키 무료 발급: https://fred.stlouisfed.org/docs/api/api_key.html
-
-## 로컬 실행
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-## 주의
-
-이 앱은 연구·학습·분석용 도구이며 투자 조언이 아닙니다.
+streamlit>=1.41.0,<2.0
+pandas>=2.2.0,<3.0
+numpy>=1.26.0,<3.0
+yfinance>=0.2.50,<0.3.0
+matplotlib>=3.8.0,<4.0
+plotly>=5.20.0,<7.0
+requests>=2.31.0,<3.0
+python-dotenv>=1.0.0,<2.0
+google-generativeai>=0.8.0,<1.0
+anthropic>=0.40.0,<1.0
+pykrx>=1.0.45,<2.0
+pycoingecko>=3.1.0,<4.0
+beautifulsoup4>=4.12.0,<5.0
+streamlit-autorefresh>=1.0.1,<2.0
+fredapi>=0.5.1,<1.0
