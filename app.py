@@ -179,7 +179,6 @@ FRED_META: Dict[str, Dict] = {
     "GDPC1":         {"label": "Real GDP (B USD)",               "transform": "none",  "freq": "quarterly"},
     "GDP":           {"label": "Nominal GDP (B USD)",            "transform": "none",  "freq": "quarterly"},
     "NCBEILQ027S":   {"label": "US Equity Market Cap (B USD)",   "transform": "none",  "freq": "quarterly"},
-    "WILL5000IND": {"label": "Wilshire 5000 Full Cap (B USD)", "transform": "none",  "freq": "daily"},
     "CPIAUCSL":      {"label": "CPI (Index)",                    "transform": "none",  "freq": "monthly"},
     "UNRATE":        {"label": "Unemployment Rate (%)",          "transform": "none",  "freq": "monthly"},
 }
@@ -380,51 +379,60 @@ def fetch_buffett(fred_key: str) -> dict:
     """
     버핏지표 = 미국 주식시장 시총 / 미국 명목 GDP
 
-    시총 계산 방식:
-      FRED NCBEILQ027S = 비금융 기업 주식 시가총액 (분기, 십억달러)
-      → 가장 정확한 방식이지만 분기 지연
-      fallback: SPY 시총 / SPY S&P500 비중 (0.80) 으로 전체 시장 추정
+    ※ FRED는 2024년 6월 3일 윌셔 인덱스(WILL5000IND 등) 전체 삭제
+       → NCBEILQ027S(비금융기업 주식 시총) 또는 SPY 시총 추정 사용
 
-    GDP:
-      FRED GDP (명목GDP, 십억달러) — GDPC1(실질) 아닌 명목 사용이 정확
-      fallback: GDPC1 사용
+    시총 계산 우선순위:
+      1. FRED NCBEILQ027S (비금융기업 주식 시가총액, 분기, 십억달러)
+      2. yfinance ^W5000 시가총액 (일간, 달러) — yfinance는 market_cap 제공
+      3. SPY 시총 / 0.80 추정 (S&P500 = 전체 시장의 약 80%)
+
+    GDP: FRED GDP (명목 GDP, 십억달러, 분기)
     """
     try:
-        # ── GDP: 명목 GDP 우선 (FRED 'GDP' 시리즈) ──────────────
+        # ── GDP: 명목 GDP ─────────────────────────────────────────
         gdp_series = load_fred_series("GDP", fred_key)
         if gdp_series.empty:
             gdp_series = load_fred_series("GDPC1", fred_key)
         if gdp_series.empty:
             return {}
-        latest_gdp_bn = float(gdp_series.dropna().iloc[-1])  # 십억달러
+        latest_gdp_bn = float(gdp_series.dropna().iloc[-1])
 
-        # ── 시총: NCBEILQ027S (비금융기업 주식 시총, 십억달러) ──
+        # ── 시총 1순위: NCBEILQ027S ───────────────────────────────
         mktcap_bn = None
         try:
             ncb = load_fred_series("NCBEILQ027S", fred_key)
             if not ncb.empty:
-                mktcap_bn = float(ncb.dropna().iloc[-1])  # 이미 십억달러
+                val_candidate = float(ncb.dropna().iloc[-1])
+                if val_candidate > 0:
+                    mktcap_bn = val_candidate
         except Exception:
             pass
 
-        # ── fallback: Wilshire 5000 Full Cap Index ──────────────
+        # ── 시총 2순위: yfinance VTI 시총 추정 ───────────────────
+        # VTI(전체시장 ETF) 시총 / VTI 보유비율로 전체시장 추정
         if mktcap_bn is None or mktcap_bn <= 0:
             try:
-                # WILL5000IND: 윌셔5000 풀캡 (달러 기준 시총 근사값, 십억달러)
-                will = load_fred_series("WILL5000IND", fred_key)
-                if not will.empty:
-                    mktcap_bn = float(will.dropna().iloc[-1])
+                vti = yf.Ticker("VTI")
+                vti_info = vti.info
+                # sharesOutstanding * 현재가 = 시총이 아님
+                # AUM을 전체 시장의 약 10%로 추정 (VTI AUM ≈ $4~5조)
+                vti_aum = vti_info.get("totalAssets", 0)
+                if vti_aum and vti_aum > 1e11:  # 1000억달러 이상이면 신뢰
+                    # VTI는 전체 시장의 약 11% 추적
+                    mktcap_bn = (vti_aum / 1e9) / 0.11
             except Exception:
                 pass
 
-        # ── fallback: yfinance SPY 시총으로 전체 시장 추정 ───────
+        # ── 시총 3순위: SPY 시총 / 0.80 추정 ─────────────────────
         if mktcap_bn is None or mktcap_bn <= 0:
             try:
-                spy_info = yf.Ticker("SPY").fast_info
-                spy_mktcap = getattr(spy_info, "market_cap", None)
-                if spy_mktcap and spy_mktcap > 0:
-                    # SPY는 S&P500 추종 → S&P500이 전체 시장의 약 80%
-                    mktcap_bn = (spy_mktcap / 1e9) / 0.80
+                spy = yf.Ticker("SPY")
+                spy_info = spy.info
+                spy_aum = spy_info.get("totalAssets", 0)
+                if spy_aum and spy_aum > 1e11:
+                    # SPY는 S&P500 추종, S&P500 = 전체 시장의 약 80%
+                    mktcap_bn = (spy_aum / 1e9) / 0.80
             except Exception:
                 pass
 
@@ -1337,7 +1345,7 @@ with tabs[3]:
         if is_advanced:
             st.caption("""
             **버핏지표 계산 방식**: 미국 주식시장 시총 ÷ 명목 GDP
-            - 시총: FRED NCBEILQ027S (비금융기업 주식 시가총액, 분기) → fallback: WILL5000IND → SPY 추정
+            - 시총: FRED NCBEILQ027S(분기) → VTI AUM 추정 → SPY AUM 추정 순서
             - GDP: FRED GDP (명목 GDP, 십억달러, 분기)
             - 0.85 이하=저평가, 0.85~1.1=적정, 1.1~1.4=고평가, 1.4 이상=크게 고평가
             """)
@@ -1767,7 +1775,8 @@ with tabs[12]:
         st.markdown("#### 버핏지표")
         st.code("버핏지표 = 미국 주식시장 시총(B USD) / 명목 GDP(B USD)", language="text")
         st.caption("""
-        - 시총 우선순위: NCBEILQ027S(분기) → WILL5000IND(일간) → SPY 시총 추정
+        - 시총 우선순위: NCBEILQ027S(분기) → VTI AUM 추정 → SPY AUM 추정
+            - ※ FRED가 2024.06.03 윌셔 인덱스 전체 삭제 → WILL5000IND 사용 불가
         - GDP: FRED GDP (명목 GDP, 분기)
         - 이전 버전 오류: ^W5000 포인트값 * 1e6 방식은 단위가 맞지 않아 수정됨
         """)
