@@ -179,7 +179,7 @@ FRED_META: Dict[str, Dict] = {
     "GDPC1":         {"label": "Real GDP (B USD)",               "transform": "none",  "freq": "quarterly"},
     "GDP":           {"label": "Nominal GDP (B USD)",            "transform": "none",  "freq": "quarterly"},
     "NCBEILQ027S":   {"label": "US Equity Market Cap (B USD)",   "transform": "none",  "freq": "quarterly"},
-    "WILL5000INDFC": {"label": "Wilshire 5000 Full Cap (B USD)", "transform": "none",  "freq": "daily"},
+    "WILL5000IND": {"label": "Wilshire 5000 Full Cap (B USD)", "transform": "none",  "freq": "daily"},
     "CPIAUCSL":      {"label": "CPI (Index)",                    "transform": "none",  "freq": "monthly"},
     "UNRATE":        {"label": "Unemployment Rate (%)",          "transform": "none",  "freq": "monthly"},
 }
@@ -410,8 +410,8 @@ def fetch_buffett(fred_key: str) -> dict:
         # ── fallback: Wilshire 5000 Full Cap Index ──────────────
         if mktcap_bn is None or mktcap_bn <= 0:
             try:
-                # WILL5000INDFC: 윌셔5000 풀캡 (달러 기준 시총 근사값, 십억달러)
-                will = load_fred_series("WILL5000INDFC", fred_key)
+                # WILL5000IND: 윌셔5000 풀캡 (달러 기준 시총 근사값, 십억달러)
+                will = load_fred_series("WILL5000IND", fred_key)
                 if not will.empty:
                     mktcap_bn = float(will.dropna().iloc[-1])
             except Exception:
@@ -1337,7 +1337,7 @@ with tabs[3]:
         if is_advanced:
             st.caption("""
             **버핏지표 계산 방식**: 미국 주식시장 시총 ÷ 명목 GDP
-            - 시총: FRED NCBEILQ027S (비금융기업 주식 시가총액, 분기) → fallback: WILL5000INDFC → SPY 추정
+            - 시총: FRED NCBEILQ027S (비금융기업 주식 시가총액, 분기) → fallback: WILL5000IND → SPY 추정
             - GDP: FRED GDP (명목 GDP, 십억달러, 분기)
             - 0.85 이하=저평가, 0.85~1.1=적정, 1.1~1.4=고평가, 1.4 이상=크게 고평가
             """)
@@ -1767,7 +1767,7 @@ with tabs[12]:
         st.markdown("#### 버핏지표")
         st.code("버핏지표 = 미국 주식시장 시총(B USD) / 명목 GDP(B USD)", language="text")
         st.caption("""
-        - 시총 우선순위: NCBEILQ027S(분기) → WILL5000INDFC(일간) → SPY 시총 추정
+        - 시총 우선순위: NCBEILQ027S(분기) → WILL5000IND(일간) → SPY 시총 추정
         - GDP: FRED GDP (명목 GDP, 분기)
         - 이전 버전 오류: ^W5000 포인트값 * 1e6 방식은 단위가 맞지 않아 수정됨
         """)
