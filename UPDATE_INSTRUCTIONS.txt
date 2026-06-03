@@ -1,15 +1,19 @@
-streamlit>=1.41.0,<2.0
-pandas>=2.2.0,<3.0
-numpy>=1.26.0,<3.0
-yfinance>=0.2.50,<0.3.0
-matplotlib>=3.8.0,<4.0
-plotly>=5.20.0,<7.0
-requests>=2.31.0,<3.0
-python-dotenv>=1.0.0,<2.0
-google-generativeai>=0.8.0,<1.0
-anthropic>=0.40.0,<1.0
-pykrx>=1.0.45,<2.0
-pycoingecko>=3.1.0,<4.0
-beautifulsoup4>=4.12.0,<5.0
-streamlit-autorefresh>=1.0.1,<2.0
-fredapi>=0.5.1,<1.0
+GitHub 업로드 방법
+
+1. 이 ZIP 압축 해제
+2. GitHub 저장소 Wodook22/macro-quant-terminal 이동
+3. Add file → Upload files
+4. 업로드할 파일:
+   - app.py          (핵심 — fredapi 방식으로 교체됨)
+   - requirements.txt (fredapi 추가됨)
+   - README.md
+5. Commit changes
+6. Streamlit Cloud 자동 재배포 대기
+7. 안 되면: Manage app → Reboot app
+
+Streamlit Cloud Secrets 확인 (필수):
+Settings → Secrets에 FRED_API_KEY 있어야 함
+
+절대 업로드 금지:
+.env
+.streamlit/secrets.toml
